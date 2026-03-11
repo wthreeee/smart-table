@@ -12,27 +12,26 @@ export function initTable(settings, onAction) {
     const root = cloneTemplate(tableTemplate);
 
     // @todo: #1.2 —  вывести дополнительные шаблоны до и после таблицы
-    before.reverse().forEach(subName => {
-        root[subName] = cloneTemplate(subName);
-        root.container.prepend(root[subName].container);
-    });
+    if (Array.isArray(before)) {
+        before
+            .slice()
+            .reverse()
+            .forEach((subName) => {
+                root[subName] = cloneTemplate(subName);
+                root.container.prepend(root[subName].container);
+            });
+    }
 
-    after.forEach(subName => {
-        root[subName] = cloneTemplate(subName);
-        root.container.append(root[subName].container);
-    });
-    
-    // @todo: #1.3 —  обработать события и вызвать onAction()
-    root.container.addEventListener('change', () => {
-        onAction();
-    });
-
-    root.container.addEventListener('reset', () => {
-        setTimeout(() => {
-            onAction();
+    if (Array.isArray(after)) {
+        after.forEach((subName) => {
+            root[subName] = cloneTemplate(subName);
+            root.container.append(root[subName].container);
         });
-    });
+    }
 
+    // @todo: #1.3 —  обработать события и вызвать onAction()
+    root.container.addEventListener('change', () => onAction());
+    root.container.addEventListener('reset', () => setTimeout(() => onAction()));
     root.container.addEventListener('submit', (e) => {
         e.preventDefault();
         onAction(e.submitter);
@@ -40,15 +39,21 @@ export function initTable(settings, onAction) {
 
     const render = (data) => {
         // @todo: #1.1 — преобразовать данные в массив строк на основе шаблона rowTemplate
-        const nextRows = data.map(rowData => {
-            const {container: rowEl, elements: cells} = cloneTemplate(rowTemplate);
-            // Заполняем ячейки данными из объекта rowData
-            Object.entries(rowData).forEach(([key, value]) => {
-                if (cells[key]) {
-                    cells[key].textContent = value == null ? '' : String(value);
+        const nextRows = data.map((item) => {
+            const row = cloneTemplate(rowTemplate);
+
+            Object.keys(item).forEach((key) => {
+                if (!Object.prototype.hasOwnProperty.call(row.elements, key)) return;
+
+                const el = row.elements[key];
+                if (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') {
+                    el.value = item[key];
+                } else {
+                    el.textContent = item[key];
                 }
             });
-            return rowEl;
+
+            return row.container;
         });
         root.elements.rows.replaceChildren(...nextRows);
     }
